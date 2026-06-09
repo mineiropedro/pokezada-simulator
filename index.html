@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokezada Simulator</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #0b0d14;
+  --bg2:     #111320;
+  --bg3:     #191c2e;
+  --border:  #252840;
+  --accent:  #f0c040;
+  --green:   #4ade80;
+  --red:     #f87171;
+  --muted:   #556080;
+  --text:    #dde1ef;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+.screen { display: none; min-height: 100vh; }
+.screen.active { display: flex; flex-direction: column; }
+
+/* ── BOTÕES ── */
+.btn {
+  border: none; cursor: pointer; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: var(--accent); color: #000;
+  padding: 14px 40px; font-size: 14px;
+}
+.btn-primary:hover { box-shadow: 0 6px 24px rgba(240,192,64,.35); transform: translateY(-1px); }
+.btn-primary:disabled { opacity: .35; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-ghost {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--border);
+  padding: 12px 24px; font-size: 13px;
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+.btn-ghost:disabled { opacity: .3; cursor: not-allowed; }
+
+/* ── UTILS ── */
+.r-high  { color: var(--accent); }
+.r-mid   { color: var(--text); }
+.r-low   { color: var(--muted); }
+.r-bad   { color: var(--red); }
+
+/* ════════════════ HOME ════════════════ */
+#screen-home {
+  align-items: center; justify-content: center;
+  text-align: center; gap: 28px; padding: 40px 20px;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% -10%, rgba(240,192,64,.1) 0%, transparent 70%),
+    var(--bg);
+}
+
+.home-eyebrow {
+  font-size: 11px; letter-spacing: 4px; color: var(--accent);
+  text-transform: uppercase; opacity: .8;
+}
+
+.home-title {
+  font-size: clamp(44px, 9vw, 80px);
+  font-weight: 900; letter-spacing: -3px; line-height: 1;
+  color: #fff;
+}
+.home-title span { color: var(--accent); }
+
+.home-desc {
+  font-size: 15px; color: var(--muted);
+  max-width: 380px; line-height: 1.7;
+}
+
+/* ════════════════ DRAFT ════════════════ */
+#screen-draft {
+  padding: 28px 24px; gap: 20px;
+  max-width: 900px; margin: 0 auto; width: 100%;
+}
+
+.draft-top { text-align: center; }
+
+.draft-pick-label {
+  font-size: 10px; letter-spacing: 3px; color: var(--muted);
+  text-transform: uppercase; margin-bottom: 6px;
+}
+
+.draft-subtitle {
+  font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -.5px;
+}
+
+.role-dots {
+  display: flex; gap: 10px; justify-content: center; margin-top: 14px;
+}
+.role-dot {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.role-dot-circle {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--border); transition: all 0.25s;
+}
+.role-dot.done   .role-dot-circle { background: var(--green); }
+.role-dot.active .role-dot-circle { background: var(--accent); transform: scale(1.4); }
+.role-dot-label {
+  font-size: 8px; letter-spacing: 1px; color: var(--muted);
+  text-transform: uppercase;
+}
+.role-dot.done .role-dot-label { color: var(--green); }
+
+/* draft layout */
+.draft-layout {
+  display: grid; grid-template-columns: 1fr 280px; gap: 16px; flex: 1;
+}
+
+/* team card */
+.team-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  padding: 24px; display: flex; flex-direction: column; gap: 16px;
+  position: relative; overflow: hidden;
+  animation: cardIn .25s ease;
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.team-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 3px; background: var(--accent);
+}
+
+.tc-head { display: flex; align-items: center; gap: 14px; }
+
+.tc-abbr {
+  width: 52px; height: 52px; flex-shrink: 0;
+  background: var(--bg3); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; color: var(--accent); letter-spacing: 1px;
+}
+
+.tc-team-sub   { font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+.tc-team-name  { font-size: 20px; font-weight: 700; color: #fff; margin-top: 2px; }
+
+/* player rows */
+.tc-players { display: flex; flex-direction: column; gap: 6px; }
+
+.player-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; background: var(--bg3);
+  border: 1px solid var(--border);
+  cursor: pointer; transition: border-color .15s, background .15s;
+}
+.player-row:not(.blocked):hover {
+  border-color: var(--accent); background: #1e2038;
+}
+.player-row.blocked {
+  opacity: .35; cursor: not-allowed;
+}
+
+.pr-role   { font-size: 9px; letter-spacing: 1.5px; color: var(--muted); min-width: 52px; text-transform: uppercase; }
+.pr-name   { flex: 1; font-size: 16px; font-weight: 700; }
+.pr-rating { font-size: 18px; font-weight: 900; letter-spacing: -.5px; }
+.pr-check  { font-size: 13px; color: var(--green); margin-left: 4px; }
+
+/* sidebar */
+.team-sidebar {
+  background: var(--bg2); border: 1px solid var(--border);
+  padding: 18px; display: flex; flex-direction: column; gap: 10px;
+}
+
+.sidebar-title {
+  font-size: 9px; letter-spacing: 3px; color: var(--muted);
+  text-transform: uppercase; padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sp-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 10px; background: var(--bg3);
+  animation: fadeIn .2s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; } to { opacity: 1; }
+}
+.sp-row.empty {
+  background: transparent; border: 1px dashed var(--border);
+  height: 44px; opacity: .35;
+}
+
+.sp-role  { font-size: 9px; letter-spacing: 1px; color: var(--muted); min-width: 52px; text-transform: uppercase; }
+.sp-name  { font-size: 13px; font-weight: 600; flex: 1; }
+.sp-rtg   { font-size: 13px; font-weight: 700; }
+
+/* ════════════════ READY ════════════════ */
+#screen-ready {
+  align-items: center; justify-content: center;
+  padding: 40px 24px; gap: 28px; text-align: center;
+}
+
+.ready-eyebrow { font-size: 10px; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; }
+.ready-heading { font-size: 32px; font-weight: 800; color: #fff; }
+
+.player-grid {
+  display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;
+  max-width: 760px;
+}
+
+.player-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  padding: 16px 14px; text-align: center; min-width: 130px;
+}
+
+.pc-role   { font-size: 9px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+.pc-name   { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.pc-team   { font-size: 10px; color: var(--muted); margin-bottom: 10px; }
+.pc-rating { font-size: 26px; font-weight: 900; letter-spacing: -1px; }
+
+.avg-block {
+  background: var(--bg2); border: 1px solid var(--border);
+  padding: 16px 36px; text-align: center;
+}
+.avg-lbl { font-size: 9px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+.avg-val { font-size: 44px; font-weight: 900; letter-spacing: -2px; }
+
+/* ════════════════ MATCH ════════════════ */
+#screen-match {
+  padding: 20px 24px; gap: 16px;
+  max-width: 660px; margin: 0 auto; width: 100%;
+}
+
+/* tournament progress bar */
+.t-progress { display: flex; }
+.t-step {
+  flex: 1; text-align: center; padding: 9px 6px;
+  font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--muted); border-bottom: 2px solid var(--border);
+  transition: all .25s;
+}
+.t-step.done   { color: var(--green); border-color: var(--green); }
+.t-step.active { color: var(--accent); border-color: var(--accent); font-weight: 700; }
+
+/* match header */
+.match-hdr {
+  background: var(--bg2); border: 1px solid var(--border);
+  padding: 20px 24px;
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  align-items: center; gap: 16px; text-align: center;
+}
+
+.mh-team-name { font-size: 18px; font-weight: 800; letter-spacing: -.5px; }
+.mh-team-rtg  { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+.mh-score {
+  font-size: 52px; font-weight: 900; letter-spacing: -4px;
+  min-width: 110px;
+}
+.mh-score .s-user { color: var(--accent); }
+.mh-score .s-sep  { color: var(--border); }
+.mh-score .s-bot  { color: var(--text); }
+
+/* rounds */
+.rounds-wrap {
+  background: var(--bg2); border: 1px solid var(--border);
+  flex: 1; overflow-y: auto; max-height: 380px;
+}
+.rounds-inner { padding: 8px; display: flex; flex-direction: column; gap: 3px; }
+
+.round-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 12px; background: var(--bg3);
+  animation: slideIn .18s ease both;
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.rr-num    { font-size: 10px; color: var(--muted); min-width: 20px; text-align: right; }
+.rr-dot    { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.rr-dot.u  { background: var(--accent); }
+.rr-dot.b  { background: var(--red); }
+.rr-score  { font-size: 13px; font-weight: 700; min-width: 56px; text-align: center; color: var(--text); }
+.rr-winner { font-size: 12px; flex: 1; text-align: right; }
+.rr-winner.u { color: var(--accent); }
+.rr-winner.b { color: var(--red); }
+
+.halftime-sep {
+  text-align: center; font-size: 9px; letter-spacing: 3px;
+  color: var(--muted); padding: 6px 0; text-transform: uppercase;
+  border-top: 1px dashed var(--border); border-bottom: 1px dashed var(--border);
+  margin: 4px 0;
+}
+
+.match-footer { text-align: center; }
+
+/* ════════════════ RESULT SCREENS ════════════════ */
+#screen-champion, #screen-eliminated {
+  align-items: center; justify-content: center;
+  text-align: center; gap: 20px; padding: 40px 20px;
+}
+#screen-champion {
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 0%, rgba(240,192,64,.12) 0%, transparent 70%),
+    var(--bg);
+}
+#screen-eliminated {
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 0%, rgba(248,113,113,.08) 0%, transparent 70%),
+    var(--bg);
+}
+
+.res-tag    { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; }
+.res-tag.w  { color: var(--accent); }
+.res-tag.l  { color: var(--red); }
+
+.res-title {
+  font-size: clamp(44px, 9vw, 76px);
+  font-weight: 900; letter-spacing: -3px; line-height: 1.05; color: #fff;
+}
+
+.res-trophy { font-size: 72px; line-height: 1; }
+
+.res-score { font-size: 18px; color: var(--muted); }
+.res-score strong { color: var(--text); }
+
+/* ── scrollbar ── */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); }
+
+/* ── responsive ── */
+@media (max-width: 600px) {
+  .draft-layout { grid-template-columns: 1fr; }
+  .mh-score { font-size: 38px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════ HOME ══════════ -->
+<div id="screen-home" class="screen active">
+  <div class="home-eyebrow">CS2 Draft Simulator</div>
+  <h1 class="home-title">Pokezada<br><span>Simulator</span></h1>
+  <p class="home-desc">Sorteie jogadores por posição, monte seu time e leve-os ao campeonato.</p>
+  <button class="btn btn-primary" onclick="startDraft()">Começar Draft</button>
+</div>
+
+<!-- ══════════ DRAFT ══════════ -->
+<div id="screen-draft" class="screen">
+  <div class="draft-top">
+    <div class="draft-pick-label" id="draft-pick-label">Pick 1 de 5</div>
+    <div class="draft-subtitle">Escolha um jogador</div>
+    <div class="role-dots" id="role-dots"></div>
+  </div>
+
+  <div class="draft-layout">
+    <div class="team-card" id="team-card">
+      <div class="tc-head">
+        <div class="tc-abbr" id="tc-abbr">—</div>
+        <div>
+          <div class="tc-team-sub">Time Sorteado</div>
+          <div class="tc-team-name" id="tc-team-name">—</div>
+        </div>
+      </div>
+
+      <div class="tc-players" id="tc-players"></div>
+
+      <button class="btn btn-ghost" id="reroll-btn" onclick="doReroll()" style="width:100%">
+        🎲 Trocar Time &nbsp;<span style="font-size:9px;opacity:.6;letter-spacing:1px">— 1 uso restante</span>
+      </button>
+    </div>
+
+    <div class="team-sidebar">
+      <div class="sidebar-title">Seu Time</div>
+      <div id="sidebar-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ READY ══════════ -->
+<div id="screen-ready" class="screen">
+  <div class="ready-eyebrow">Time Formado</div>
+  <div class="ready-heading">Pronto para o torneio?</div>
+  <div class="player-grid" id="ready-grid"></div>
+  <div class="avg-block">
+    <div class="avg-lbl">Rating Médio</div>
+    <div class="avg-val" id="ready-avg">0.00</div>
+  </div>
+  <button class="btn btn-primary" onclick="startTournament()">Iniciar Torneio</button>
+</div>
+
+<!-- ══════════ MATCH ══════════ -->
+<div id="screen-match" class="screen">
+  <div class="t-progress" id="t-progress"></div>
+
+  <div class="match-hdr">
+    <div>
+      <div class="mh-team-name">Seu Time</div>
+      <div class="mh-team-rtg" id="mh-user-rtg">avg —</div>
+    </div>
+    <div class="mh-score">
+      <span class="s-user" id="s-user">0</span>
+      <span class="s-sep"> : </span>
+      <span class="s-bot" id="s-bot">0</span>
+    </div>
+    <div>
+      <div class="mh-team-name" id="mh-bot-name">—</div>
+      <div class="mh-team-rtg" id="mh-bot-rtg">avg —</div>
+    </div>
+  </div>
+
+  <div class="rounds-wrap">
+    <div class="rounds-inner" id="rounds-inner"></div>
+  </div>
+
+  <div class="match-footer" id="match-footer" style="display:none">
+    <button class="btn btn-primary" id="footer-btn" onclick="onMatchFooter()">—</button>
+  </div>
+</div>
+
+<!-- ══════════ CHAMPION ══════════ -->
+<div id="screen-champion" class="screen">
+  <div class="res-tag w">Campeão do Torneio</div>
+  <div class="res-title">CAMPEÃO!</div>
+  <div class="res-trophy">🏆</div>
+  <div class="res-score">Seu time conquistou o Pokezada Simulator!</div>
+  <div class="res-score" id="champ-score"></div>
+  <button class="btn btn-primary" onclick="restartGame()">Jogar Novamente</button>
+</div>
+
+<!-- ══════════ ELIMINATED ══════════ -->
+<div id="screen-eliminated" class="screen">
+  <div class="res-tag l">Eliminado</div>
+  <div class="res-title" style="color:var(--red)">GG WP</div>
+  <div class="res-score" id="elim-phase"></div>
+  <div class="res-score" id="elim-score"></div>
+  <button class="btn btn-primary" onclick="restartGame()">Tentar Novamente</button>
+</div>
+
+<script>
+/* ═══════════════════ DATA ═══════════════════ */
+const DRAFT_TEAMS = [
+  {
+    name: "Racharia",
+    players: {
+      IGL:     { name: "Seezah",      rating: 1.55 },
+      AWP:     { name: "Todd",        rating: 1.15 },
+      Rifler:  { name: "Perna",       rating: 1.30 },
+      Entry:   { name: "Zoldick",     rating: 1.05 },
+      Support: { name: "Ph",          rating: 1.10 }
+    }
+  },
+  {
+    name: "Pokezada",
+    players: {
+      IGL:     { name: "Gelol",       rating: 0.60 },
+      AWP:     { name: "Vargas",      rating: 0.80 },
+      Rifler:  { name: "Mineiro",     rating: 0.80 },
+      Entry:   { name: "Gabriel",     rating: 0.90 },
+      Support: { name: "VTR",         rating: 0.40 }
+    }
+  },
+  {
+    name: "RuimQueDoi",
+    players: {
+      IGL:     { name: "Andregyn",    rating: 0.50 },
+      AWP:     { name: "STW",         rating: 0.60 },
+      Rifler:  { name: "Brouzinho",   rating: 0.70 },
+      Entry:   { name: "Yuriih",      rating: 0.60 },
+      Support: { name: "Dien",        rating: 0.90 }
+    }
+  },
+  {
+    name: "Teladores",
+    players: {
+      IGL:     { name: "Gabu",        rating: 1.30 },
+      AWP:     { name: "Geba",        rating: 1.80 },
+      Rifler:  { name: "Breno",       rating: 1.30 },
+      Entry:   { name: "Mitonha",     rating: 1.10 },
+      Support: { name: "Raul",        rating: 0.80 }
+    }
+  },
+  {
+    name: "CoringasdoBT",
+    players: {
+      IGL:     { name: "Fumaca",      rating: 1.10 },
+      AWP:     { name: "iMath",       rating: 0.80 },
+      Rifler:  { name: "HSnaCabeca",  rating: 0.80 },
+      Entry:   { name: "Khinur",      rating: 0.50 },
+      Support: { name: "Chatuba",     rating: 0.40 }
+    }
+  }
+];
+
+const BOT_TEAMS = [
+  { name: "Dona Poncha",      phase: "Oitavas",  rating: 0.70 },
+  { name: "Kacetasso",        phase: "Quartas",  rating: 0.90 },
+  { name: "GuidoeAmigos",     phase: "Semi",     rating: 1.05 },
+  { name: "Lobby do Alastro", phase: "Final",    rating: 1.15 }
+];
+
+const ROLES = ["IGL", "AWP", "Rifler", "Entry", "Support"];
+const ROLE_DESC = {
+  IGL:     "In-Game Leader",
+  AWP:     "Sniper Principal",
+  Rifler:  "Rifle Secundário",
+  Entry:   "Entry Fragger",
+  Support: "Suporte"
+};
+
+/* ═══════════════════ STATE ═══════════════════ */
+const st = {
+  pickCount:      0,          // picks feitos até agora (0-4)
+  pickedRoles:    new Set(),  // roles já preenchidas
+  usedTeams:      new Set(),  // times já usados (não podem mais aparecer)
+  currentTeamIdx: null,
+  rerollUsed:     false,      // 1 reroll global por jogo
+  team:           [],
+  userAvg:        0,
+  matchIndex:     0,
+  matchResult:    null
+};
+
+/* ═══════════════════ UTILS ═══════════════════ */
+const $ = id => document.getElementById(id);
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+
+function rClass(r) {
+  if (r >= 1.30) return 'r-high';
+  if (r >= 0.90) return 'r-mid';
+  if (r >= 0.70) return 'r-low';
+  return 'r-bad';
+}
+
+function fmt(r) { return r.toFixed(2); }
+
+function abbr(name) {
+  return name.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 3);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* ═══════════════════ DRAFT ═══════════════════ */
+function startDraft() {
+  st.pickCount    = 0;
+  st.pickedRoles  = new Set();
+  st.usedTeams    = new Set();
+  st.rerollUsed   = false;
+  st.team         = [];
+  showScreen('screen-draft');
+  newDraftRound();
+}
+
+function availableTeams() {
+  return DRAFT_TEAMS
+    .map((t, i) => i)
+    .filter(i => !st.usedTeams.has(i));
+}
+
+function newDraftRound() {
+  const pool = availableTeams();
+  st.currentTeamIdx = pool[Math.floor(Math.random() * pool.length)];
+  renderDraft();
+}
+
+function renderDraft() {
+  const team = DRAFT_TEAMS[st.currentTeamIdx];
+
+  $('draft-pick-label').textContent = `Pick ${st.pickCount + 1} de 5`;
+
+  // re-trigger card animation
+  const card = $('team-card');
+  card.style.animation = 'none';
+  card.offsetHeight;
+  card.style.animation = '';
+
+  $('tc-abbr').textContent     = abbr(team.name);
+  $('tc-team-name').textContent = team.name;
+
+  // render all 5 player rows
+  $('tc-players').innerHTML = ROLES.map(role => {
+    const p       = team.players[role];
+    const blocked = st.pickedRoles.has(role);
+    return `
+      <div class="player-row ${blocked ? 'blocked' : ''}"
+           data-role="${role}"
+           onclick="pickPlayer(this)">
+        <div class="pr-role">${role}</div>
+        <div class="pr-name">${p.name}</div>
+        <div class="pr-rating ${rClass(p.rating)}">${fmt(p.rating)}</div>
+        ${blocked ? '<div class="pr-check">✓</div>' : ''}
+      </div>`;
+  }).join('');
+
+  // reroll button: esconde se já usado
+  const btn = $('reroll-btn');
+  btn.style.display = st.rerollUsed ? 'none' : '';
+
+  renderDots();
+  renderSidebar();
+}
+
+function renderDots() {
+  $('role-dots').innerHTML = ROLES.map(role => {
+    const done = st.pickedRoles.has(role);
+    const cls  = 'role-dot' + (done ? ' done' : '');
+    return `
+      <div class="${cls}">
+        <div class="role-dot-circle"></div>
+        <div class="role-dot-label">${role}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderSidebar() {
+  $('sidebar-list').innerHTML = ROLES.map(role => {
+    const p = st.team.find(x => x.role === role);
+    if (p) {
+      return `
+        <div class="sp-row">
+          <span class="sp-role">${role}</span>
+          <span class="sp-name">${p.name}</span>
+          <span class="sp-rtg ${rClass(p.rating)}">${fmt(p.rating)}</span>
+        </div>`;
+    }
+    return `<div class="sp-row empty"></div>`;
+  }).join('');
+}
+
+function pickPlayer(el) {
+  const role = el.dataset.role;
+  if (st.pickedRoles.has(role)) return;
+
+  const team   = DRAFT_TEAMS[st.currentTeamIdx];
+  const player = team.players[role];
+
+  st.pickedRoles.add(role);
+  st.usedTeams.add(st.currentTeamIdx);
+  st.team.push({ role, name: player.name, rating: player.rating, teamName: team.name });
+  st.pickCount++;
+
+  if (st.pickCount >= 5) {
+    st.userAvg = st.team.reduce((s, p) => s + p.rating, 0) / 5;
+    showReadyScreen();
+  } else {
+    newDraftRound();
+  }
+}
+
+function doReroll() {
+  if (st.rerollUsed) return;
+  const pool = availableTeams().filter(i => i !== st.currentTeamIdx);
+  if (pool.length === 0) return; // sem alternativa (não deve acontecer)
+  st.rerollUsed = true;
+  st.currentTeamIdx = pool[Math.floor(Math.random() * pool.length)];
+  renderDraft();
+}
+
+/* ═══════════════════ READY ═══════════════════ */
+function showReadyScreen() {
+  $('ready-grid').innerHTML = st.team.map(p => `
+    <div class="player-card">
+      <div class="pc-role">${p.role}</div>
+      <div class="pc-name">${p.name}</div>
+      <div class="pc-team">${p.teamName}</div>
+      <div class="pc-rating ${rClass(p.rating)}">${fmt(p.rating)}</div>
+    </div>`).join('');
+
+  const avgEl = $('ready-avg');
+  avgEl.textContent = fmt(st.userAvg);
+  avgEl.className = `avg-val ${rClass(st.userAvg)}`;
+
+  showScreen('screen-ready');
+}
+
+/* ═══════════════════ TOURNAMENT ═══════════════════ */
+function startTournament() {
+  st.matchIndex = 0;
+  loadMatch(0);
+}
+
+function renderProgress(active) {
+  $('t-progress').innerHTML = BOT_TEAMS.map((b, i) => {
+    let cls = 't-step';
+    if (i < active)      cls += ' done';
+    else if (i === active) cls += ' active';
+    return `<div class="${cls}">${b.phase}</div>`;
+  }).join('');
+}
+
+function loadMatch(idx) {
+  const bot = BOT_TEAMS[idx];
+
+  $('mh-user-rtg').textContent = `avg ${fmt(st.userAvg)}`;
+  $('mh-bot-name').textContent = bot.name;
+  $('mh-bot-rtg').textContent = `avg ${fmt(bot.rating)}`;
+  $('s-user').textContent = '0';
+  $('s-bot').textContent = '0';
+  $('rounds-inner').innerHTML = '';
+  $('match-footer').style.display = 'none';
+
+  renderProgress(idx);
+  showScreen('screen-match');
+
+  setTimeout(() => runMatch(idx), 700);
+}
+
+/* simulate all rounds upfront, return array */
+function simulate(userRtg, botRtg) {
+  const wp = userRtg / (userRtg + botRtg);
+  let us = 0, bs = 0;
+  const rounds = [];
+
+  while (true) {
+    const uw = Math.random() < wp;
+    if (uw) us++; else bs++;
+    rounds.push({ uw, us, bs });
+
+    if (us >= 13 && us - bs >= 2) break;
+    if (bs >= 13 && bs - us >= 2) break;
+    if (rounds.length > 60) break; // safety
+  }
+  return rounds;
+}
+
+async function runMatch(idx) {
+  const bot = BOT_TEAMS[idx];
+  const rounds = simulate(st.userAvg, bot.rating);
+  const inner = $('rounds-inner');
+  const wrap  = inner.parentElement;
+  let halftimeDone = false;
+
+  for (let i = 0; i < rounds.length; i++) {
+    const r = rounds[i];
+    await sleep(155);
+
+    // halftime marker after round 12
+    if (i === 12 && !halftimeDone) {
+      halftimeDone = true;
+      const sep = document.createElement('div');
+      sep.className = 'halftime-sep';
+      sep.textContent = '— Intervalo —';
+      inner.appendChild(sep);
+    }
+
+    // update scoreboard
+    $('s-user').textContent = r.us;
+    $('s-bot').textContent  = r.bs;
+
+    // round row
+    const row = document.createElement('div');
+    row.className = 'round-row';
+    row.innerHTML = `
+      <div class="rr-num">${i + 1}</div>
+      <div class="rr-dot ${r.uw ? 'u' : 'b'}"></div>
+      <div class="rr-score">${r.us} <span style="color:var(--muted)">:</span> ${r.bs}</div>
+      <div class="rr-winner ${r.uw ? 'u' : 'b'}">${r.uw ? 'Seu Time' : bot.name}</div>`;
+    inner.appendChild(row);
+    wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  await sleep(500);
+
+  const last    = rounds[rounds.length - 1];
+  const userWon = last.us > last.bs;
+  st.matchResult = { userWon, us: last.us, bs: last.bs };
+
+  if (userWon) {
+    if (idx >= BOT_TEAMS.length - 1) {
+      // CHAMPION
+      $('champ-score').innerHTML = `Placar da Final: <strong>${last.us}–${last.bs}</strong>`;
+      showScreen('screen-champion');
+    } else {
+      const next = BOT_TEAMS[idx + 1];
+      $('footer-btn').textContent = `Próxima Fase → ${next.phase}`;
+      $('match-footer').style.display = 'block';
+    }
+  } else {
+    $('elim-phase').innerHTML = `Eliminado nas <strong>${bot.phase} de final</strong>.`;
+    $('elim-score').innerHTML = `Placar: <strong>${last.us}–${last.bs}</strong> para ${bot.name}`;
+    showScreen('screen-eliminated');
+  }
+}
+
+function onMatchFooter() {
+  st.matchIndex++;
+  loadMatch(st.matchIndex);
+}
+
+function restartGame() {
+  st.pickCount    = 0;
+  st.pickedRoles  = new Set();
+  st.usedTeams    = new Set();
+  st.rerollUsed   = false;
+  st.team         = [];
+  st.matchIndex   = 0;
+  st.matchResult  = null;
+  showScreen('screen-home');
+}
+</script>
+</body>
+</html>
