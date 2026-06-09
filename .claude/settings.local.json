@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.82-0.com)",
+      "WebFetch(domain:7a0.com.br)",
+      "PowerShell(Start-Process \"chrome.exe\" -ArgumentList \"C:\\\\Users\\\\Usuario\\\\Desktop\\\\trabalhos\\\\Teste-jogo\\\\index.html\")",
+      "mcp__Claude_in_Chrome__tabs_context_mcp"
+    ]
+  }
+}
